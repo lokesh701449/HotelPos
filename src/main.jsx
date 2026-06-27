@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AlertTriangle,
@@ -16,6 +16,9 @@ import {
   Hotel,
   IndianRupee,
   LayoutDashboard,
+  Loader2,
+  LogIn,
+  LogOut,
   Minus,
   Plus,
   Printer,
@@ -29,277 +32,211 @@ import {
   Store,
   Utensils,
   Wifi,
-  WifiOff
+  WifiOff,
 } from "lucide-react";
+import { io } from "socket.io-client";
 import "./styles.css";
 
-const STORAGE_KEY = "hotelpos-state-v1";
-const CHANNEL = "hotelpos-live";
+const API_BASE = "http://localhost:5003/api";
+const SOCKET_URL = "http://localhost:5003";
 const TAX_RATE = 0.05;
 
-const menu = [
-  {
-    id: "m1",
-    name: "Paneer Tikka",
-    outletId: "out-roof",
-    price: 340,
-    station: "Hot",
-    prepMins: 12,
-    stock: 8,
-    modifiers: ["Extra chutney", "Less spice", "No onion"]
-  },
-  {
-    id: "m2",
-    name: "Smoked Corn Tacos",
-    outletId: "out-roof",
-    price: 290,
-    station: "Grill",
-    prepMins: 9,
-    stock: 2,
-    modifiers: ["No cheese", "Extra salsa", "Jain"]
-  },
-  {
-    id: "m3",
-    name: "Masala Fries",
-    outletId: "out-roof",
-    price: 210,
-    station: "Fry",
-    prepMins: 6,
-    stock: 0,
-    modifiers: ["Extra peri peri", "No mayo"]
-  },
-  {
-    id: "m4",
-    name: "Filter Coffee",
-    outletId: "out-cafe",
-    price: 140,
-    station: "Beverage",
-    prepMins: 4,
-    stock: 30,
-    modifiers: ["No sugar", "Extra strong"]
-  },
-  {
-    id: "m5",
-    name: "Ghee Roast Dosa",
-    outletId: "out-cafe",
-    price: 260,
-    station: "Live",
-    prepMins: 10,
-    stock: 14,
-    modifiers: ["Extra sambar", "No ghee", "Jain"]
-  },
-  {
-    id: "m6",
-    name: "Hyderabadi Veg Biryani",
-    outletId: "out-banquet",
-    price: 420,
-    station: "Hot",
-    prepMins: 15,
-    stock: 18,
-    modifiers: ["Raita extra", "Less spice"]
-  }
-];
+// ─── API helpers ─────────────────────────────────────────────────────────────
+async function apiFetch(path, options = {}, token = null) {
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || "API Error");
+  return json.data;
+}
 
-const properties = [
-  {
-    id: "prop-hyd",
-    city: "Hyderabad",
-    name: "Terralogic Grand Hyderabad",
-    outlets: [
-      { id: "out-roof", name: "Skyline Rooftop", type: "Bar & Grill" },
-      { id: "out-cafe", name: "Atrium Cafe", type: "All-day dining" }
-    ]
-  },
-  {
-    id: "prop-blr",
-    city: "Bengaluru",
-    name: "Terralogic Grand Bengaluru",
-    outlets: [{ id: "out-banquet", name: "Mysore Hall", type: "Banquet" }]
-  }
-];
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
+function getStoredAuth() {
+  try { return JSON.parse(localStorage.getItem("pos-auth") || "null"); }
+  catch { return null; }
+}
+function setStoredAuth(data) {
+  if (data) localStorage.setItem("pos-auth", JSON.stringify(data));
+  else localStorage.removeItem("pos-auth");
+}
 
-const tables = [
-  { id: "t1", name: "T1", seats: 2, outletId: "out-roof" },
-  { id: "t2", name: "T2", seats: 4, outletId: "out-roof" },
-  { id: "t3", name: "T3", seats: 4, outletId: "out-roof" },
-  { id: "t4", name: "T4", seats: 6, outletId: "out-roof" },
-  { id: "t5", name: "C1", seats: 2, outletId: "out-cafe" },
-  { id: "t6", name: "C2", seats: 4, outletId: "out-cafe" },
-  { id: "t7", name: "B1", seats: 8, outletId: "out-banquet" },
-  { id: "t8", name: "B2", seats: 10, outletId: "out-banquet" }
-];
-
-const seededOrders = [
-  {
-    id: "ord-101",
-    propertyId: "prop-hyd",
-    outletId: "out-roof",
-    tableId: "t2",
-    status: "preparing",
-    createdAt: Date.now() - 11 * 60 * 1000,
-    paidAt: null,
-    items: [
-      itemFromMenu("m1", ["Less spice"], "preparing"),
-      itemFromMenu("m2", ["Extra salsa"], "sent")
-    ],
-    payments: [],
-    discount: 0,
-    approval: null
-  },
-  {
-    id: "ord-102",
-    propertyId: "prop-hyd",
-    outletId: "out-cafe",
-    tableId: "t5",
-    status: "sent",
-    createdAt: Date.now() - 5 * 60 * 1000,
-    paidAt: null,
-    items: [itemFromMenu("m5", ["Extra sambar"], "sent")],
-    payments: [],
-    discount: 0,
-    approval: null
-  },
-  {
-    id: "ord-099",
-    propertyId: "prop-blr",
-    outletId: "out-banquet",
-    tableId: "t8",
-    status: "paid",
-    createdAt: Date.now() - 23 * 60 * 60 * 1000,
-    paidAt: Date.now() - 21 * 60 * 60 * 1000,
-    items: [itemFromMenu("m6", ["Raita extra"], "completed")],
-    payments: [{ method: "UPI", amount: 441, ref: "UPI-8841" }],
-    discount: 0,
-    approval: null
-  }
-];
-
-function itemFromMenu(menuId, modifiers = [], status = "draft") {
-  const dish = menu.find((entry) => entry.id === menuId);
-  return {
-    id: `${menuId}-${Math.random().toString(36).slice(2, 8)}`,
-    menuId,
-    name: dish.name,
-    price: dish.price,
-    station: dish.station,
-    prepMins: dish.prepMins,
-    modifiers,
-    status
+// ─── Status helpers ────────────────────────────────────────────────────────────
+function statusLabel(s) {
+  const m = {
+    AVAILABLE: "Free", OCCUPIED: "Occupied", RESERVED: "Reserved", BILLING: "Billing",
+    OPEN: "Open", PREPARING: "Preparing", READY: "Ready", SERVED: "Served",
+    PAID: "Paid", CANCELLED: "Cancelled",
+    PENDING: "Pending", COMPLETED: "Completed", FAILED: "Failed",
+    free: "Free", open: "Open", sent: "Kitchen", preparing: "Preparing",
+    ready: "Ready", paid: "Paid", completed: "Completed", pending: "Pending",
+    approved: "Approved", denied: "Denied",
   };
+  return m[s] || s;
 }
 
-function seedState() {
-  return {
-    brandId: "brand-terralogic",
-    activeOutletId: "out-roof",
-    selectedTableId: "t1",
-    selectedCashierTableId: "t2",
-    role: "waiter",
-    online: true,
-    lastSyncAt: Date.now(),
-    offlineQueue: [],
-    orders: seededOrders,
-    approvals: [
-      {
-        id: "app-1",
-        type: "Discount",
-        amount: 150,
-        orderId: "ord-101",
-        reason: "Guest recovery",
-        status: "pending",
-        requestedAt: Date.now() - 3 * 60 * 1000
-      }
-    ],
-    zReports: [
-      {
-        id: "z-1",
-        outletId: "out-roof",
-        date: "Yesterday",
-        sales: 48210,
-        tax: 2296,
-        cash: 10600,
-        card: 22100,
-        upi: 15510,
-        reconciled: true
-      }
-    ]
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState("admin-roof@hotelpos.com");
+  const [password, setPassword] = useState("password123");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      setStoredAuth(data);
+      onLogin(data);
+    } catch (err) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-brand">
+          <Hotel size={36} />
+          <h1>HotelPOS</h1>
+          <p>Restaurant &amp; Hotel Point of Sale</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="login-form">
+          <div className="form-group">
+            <label>Email Address</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+          </div>
+          {error && <p className="login-error"><AlertTriangle size={14} /> {error}</p>}
+          <button className="primary-action login-btn" type="submit" disabled={loading}>
+            {loading ? <Loader2 size={20} className="spin" /> : <LogIn size={20} />}
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+
+        <div className="login-hints">
+          <p><strong>Quick credentials (all passwords: password123)</strong></p>
+          <ul>
+            <li>admin-roof@hotelpos.com (Skyline Rooftop)</li>
+            <li>admin-cafe@hotelpos.com (Atrium Cafe)</li>
+            <li>admin-banquet@hotelpos.com (Mysore Hall)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function loadState() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return parsed?.orders ? parsed : seedState();
-  } catch {
-    return seedState();
-  }
-}
-
-function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function calcTotals(order) {
-  const subtotal = order.items.reduce((sum, item) => sum + item.price, 0);
-  const discounted = Math.max(0, subtotal - (order.discount || 0));
-  const cgst = Math.round(discounted * TAX_RATE * 100) / 100;
-  const sgst = Math.round(discounted * TAX_RATE * 100) / 100;
-  const total = Math.round((discounted + cgst + sgst) * 100) / 100;
-  return { subtotal, discount: order.discount || 0, cgst, sgst, total };
-}
-
+// ─── Main App ─────────────────────────────────────────────────────────────────
 function App() {
-  const [state, setState] = useState(loadState);
+  const [auth, setAuth] = useState(getStoredAuth);
   const [activeRole, setActiveRole] = useState(() => window.location.hash.replace("#", "") || "waiter");
-  const [now, setNow] = useState(Date.now());
+  const socketRef = useRef(null);
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Live data state
+  const [tables, setTables] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [kitchenTickets, setKitchenTickets] = useState([]);
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const channel = new BroadcastChannel(CHANNEL);
-    channel.onmessage = (event) => {
-      if (event.data?.type === "state") {
-        setState(event.data.payload);
+  const token = auth?.token;
+  const tenantId = auth?.user?.tenantId;
+  const userRole = auth?.user?.role;
+
+  // Fetch all live data
+  const fetchAll = useCallback(async () => {
+    if (!token) return;
+    try {
+      const [t, m, o, k] = await Promise.all([
+        apiFetch("/tables", {}, token),
+        apiFetch("/menu-items", {}, token),
+        apiFetch("/orders", {}, token),
+        apiFetch("/kitchen", {}, token),
+      ]);
+      setTables(t || []);
+      setMenuItems(m || []);
+      setOrders(o || []);
+      setKitchenTickets(k || []);
+
+      // Dashboard only for ADMIN/MANAGER
+      if (["ADMIN", "MANAGER"].includes(userRole)) {
+        const d = await apiFetch("/dashboard/summary", {}, token);
+        setDashboard(d);
       }
-    };
-    const onStorage = (event) => {
-      if (event.key === STORAGE_KEY && event.newValue) {
-        setState(JSON.parse(event.newValue));
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => {
-      channel.close();
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, userRole]);
 
-  const commit = (updater) => {
-    setState((current) => {
-      const next = typeof updater === "function" ? updater(current) : updater;
-      const stamped = { ...next, lastSyncAt: Date.now() };
-      saveState(stamped);
-      new BroadcastChannel(CHANNEL).postMessage({ type: "state", payload: stamped });
-      return stamped;
+  // Socket.IO real-time sync
+  useEffect(() => {
+    if (!token || !tenantId) return;
+    const socket = io(SOCKET_URL, { transports: ["websocket"] });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("join-tenant", tenantId);
     });
-  };
 
-  const actions = useMemo(() => makeActions(commit), []);
-  const routeRole = ["waiter", "kds", "cashier", "manager"].includes(activeRole) ? activeRole : "waiter";
+    socket.on("order-created", () => fetchAll());
+    socket.on("order-updated", () => fetchAll());
+    socket.on("ticket-updated", () => fetchAll());
+    socket.on("ticket-ready", () => fetchAll());
+    socket.on("table-updated", () => fetchAll());
+    socket.on("payment-completed", () => fetchAll());
+    socket.on("dashboard-updated", () => fetchAll());
 
-  const setRole = (role) => {
-    window.location.hash = role;
-    setActiveRole(role);
-  };
+    return () => socket.disconnect();
+  }, [token, tenantId, fetchAll]);
+
+  // Initial data load
+  useEffect(() => {
+    if (auth) fetchAll();
+  }, [auth, fetchAll]);
 
   useEffect(() => {
     const onHash = () => setActiveRole(window.location.hash.replace("#", "") || "waiter");
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  const setRole = (role) => {
+    window.location.hash = role;
+    setActiveRole(role);
+  };
+
+  const handleLogin = (data) => {
+    setAuth(data);
+    setLoading(true);
+  };
+
+  const handleLogout = () => {
+    setStoredAuth(null);
+    setAuth(null);
+    setTables([]); setMenuItems([]); setOrders([]); setKitchenTickets([]);
+    setDashboard(null);
+  };
+
+  if (!auth) return <LoginScreen onLogin={handleLogin} />;
+
+  const routeRole = ["waiter", "kds", "cashier", "manager"].includes(activeRole) ? activeRole : "waiter";
+
+  const activeTickets = kitchenTickets.filter((t) => ["PENDING", "PREPARING", "READY"].includes(t.status));
 
   return (
     <div className="app">
@@ -308,209 +245,433 @@ function App() {
           <div className="brand-mark"><Hotel size={22} /></div>
           <div>
             <strong>HotelPOS</strong>
-            <span>Live F&B ops</span>
+            <span>{auth.user.name}</span>
           </div>
         </div>
         <nav className="role-nav" aria-label="POS surfaces">
           <NavButton active={routeRole === "waiter"} onClick={() => setRole("waiter")} icon={<Smartphone />} label="Waiter" />
-          <NavButton active={routeRole === "kds"} onClick={() => setRole("kds")} icon={<ChefHat />} label="KDS" />
+          <NavButton active={routeRole === "kds"} onClick={() => setRole("kds")} icon={<ChefHat />} label={`KDS ${activeTickets.length > 0 ? `(${activeTickets.length})` : ""}`} />
           <NavButton active={routeRole === "cashier"} onClick={() => setRole("cashier")} icon={<ReceiptText />} label="Cashier" />
           <NavButton active={routeRole === "manager"} onClick={() => setRole("manager")} icon={<LayoutDashboard />} label="Manager" />
         </nav>
         <div className="sync-card">
-          <span className={state.online ? "dot online" : "dot offline"} />
+          <span className="dot online" />
           <div>
-            <strong>{state.online ? "Online sync" : "Offline mode"}</strong>
-            <span>{state.offlineQueue.length} queued action{state.offlineQueue.length === 1 ? "" : "s"}</span>
+            <strong>Live Backend</strong>
+            <span>{auth.user.role} · Tenant Connected</span>
           </div>
         </div>
+        <button className="logout-btn" onClick={handleLogout}><LogOut size={16} /> Logout</button>
       </aside>
 
       <main className="surface">
-        {routeRole === "waiter" && <WaiterView state={state} actions={actions} now={now} />}
-        {routeRole === "kds" && <KdsView state={state} actions={actions} now={now} />}
-        {routeRole === "cashier" && <CashierView state={state} actions={actions} />}
-        {routeRole === "manager" && <ManagerView state={state} actions={actions} now={now} />}
+        {loading ? (
+          <div className="loading-screen">
+            <Loader2 size={48} className="spin" />
+            <p>Loading live data from backend...</p>
+          </div>
+        ) : (
+          <>
+            {routeRole === "waiter" && <WaiterView tables={tables} menuItems={menuItems} orders={orders} token={token} onRefresh={fetchAll} />}
+            {routeRole === "kds" && <KdsView kitchenTickets={kitchenTickets} token={token} onRefresh={fetchAll} />}
+            {routeRole === "cashier" && <CashierView orders={orders} token={token} onRefresh={fetchAll} />}
+            {routeRole === "manager" && <ManagerView dashboard={dashboard} orders={orders} tables={tables} onRefresh={fetchAll} />}
+          </>
+        )}
       </main>
     </div>
   );
 }
 
-function makeActions(commit) {
-  return {
-    reset: () => commit(seedState()),
-    setOutlet: (outletId) => commit((state) => ({ ...state, activeOutletId: outletId, selectedTableId: tables.find((t) => t.outletId === outletId)?.id })),
-    selectTable: (tableId) => commit((state) => ({ ...state, selectedTableId: tableId })),
-    selectCashierTable: (tableId) => commit((state) => ({ ...state, selectedCashierTableId: tableId })),
-    toggleOnline: () =>
-      commit((state) => {
-        const goingOnline = !state.online;
-        const syncedOrders = goingOnline
-          ? state.orders.map((order) =>
-              order.status === "offline"
-                ? { ...order, status: "sent", items: order.items.map((item) => ({ ...item, status: "sent" })) }
-                : order
-            )
-          : state.orders;
-        return {
-          ...state,
-          online: goingOnline,
-          offlineQueue: goingOnline ? [] : state.offlineQueue,
-          orders: syncedOrders
-        };
-      }),
-    addItem: (tableId, menuId, modifiers) =>
-      commit((state) => {
-        const table = tables.find((entry) => entry.id === tableId);
-        const dish = menu.find((entry) => entry.id === menuId);
-        if (!dish || dish.stock <= 0) return state;
-        const existing = state.orders.find((order) => order.tableId === tableId && order.status !== "paid");
-        const nextItem = itemFromMenu(menuId, modifiers, "draft");
-        if (existing) {
-          return {
-            ...state,
-            orders: state.orders.map((order) =>
-              order.id === existing.id ? { ...order, status: "open", items: [...order.items, nextItem] } : order
-            )
-          };
-        }
-        return {
-          ...state,
-          orders: [
-            ...state.orders,
-            {
-              id: `ord-${Date.now().toString().slice(-5)}`,
-              propertyId: propertyForOutlet(table.outletId).id,
-              outletId: table.outletId,
-              tableId,
-              status: "open",
-              createdAt: Date.now(),
-              paidAt: null,
-              items: [nextItem],
-              payments: [],
-              discount: 0,
-              approval: null
-            }
-          ]
-        };
-      }),
-    fireOrder: (tableId) =>
-      commit((state) => ({
-        ...state,
-        offlineQueue: state.online ? state.offlineQueue : [...state.offlineQueue, { type: "fire", tableId, at: Date.now() }],
-        orders: state.orders.map((order) =>
-          order.tableId === tableId && order.status !== "paid"
-            ? {
-                ...order,
-                status: state.online ? "sent" : "offline",
-                items: order.items.map((item) => ({ ...item, status: state.online ? "sent" : "queued" }))
-              }
-            : order
-        )
-      })),
-    startTicket: (orderId) =>
-      commit((state) => ({
-        ...state,
-        orders: state.orders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: "preparing", items: order.items.map((item) => ({ ...item, status: "preparing" })) }
-            : order
-        )
-      })),
-    bumpTicket: (orderId) =>
-      commit((state) => ({
-        ...state,
-        orders: state.orders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: "ready", items: order.items.map((item) => ({ ...item, status: "ready" })) }
-            : order
-        )
-      })),
-    completeTicket: (orderId) =>
-      commit((state) => ({
-        ...state,
-        orders: state.orders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: "completed", items: order.items.map((item) => ({ ...item, status: "completed" })) }
-            : order
-        )
-      })),
-    requestDiscount: (orderId, amount) =>
-      commit((state) => ({
-        ...state,
-        approvals: [
-          {
-            id: `app-${Date.now()}`,
-            orderId,
-            type: "Discount",
-            amount,
-            reason: "Cashier requested guest adjustment",
-            status: "pending",
-            requestedAt: Date.now()
-          },
-          ...state.approvals
-        ],
-        orders: state.orders.map((order) => (order.id === orderId ? { ...order, approval: "pending" } : order))
-      })),
-    decideApproval: (approvalId, status) =>
-      commit((state) => {
-        const approval = state.approvals.find((entry) => entry.id === approvalId);
-        return {
-          ...state,
-          approvals: state.approvals.map((entry) => (entry.id === approvalId ? { ...entry, status } : entry)),
-          orders:
-            status === "approved" && approval
-              ? state.orders.map((order) =>
-                  order.id === approval.orderId ? { ...order, discount: approval.amount, approval: "approved" } : order
-                )
-              : state.orders
-        };
-      }),
-    pay: (orderId, splitCount, method) =>
-      commit((state) => ({
-        ...state,
-        selectedCashierTableId: state.selectedCashierTableId,
-        orders: state.orders.map((order) => {
-          if (order.id !== orderId) return order;
-          const total = calcTotals(order).total;
-          const share = Math.round((total / splitCount) * 100) / 100;
-          return {
-            ...order,
-            status: "paid",
-            paidAt: Date.now(),
-            payments: Array.from({ length: splitCount }, (_, index) => ({
-              method,
-              amount: index === splitCount - 1 ? Math.round((total - share * (splitCount - 1)) * 100) / 100 : share,
-              ref: `${method.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
-            }))
-          };
-        })
-      })),
-    runZ: (outletId) =>
-      commit((state) => {
-        const paidOrders = state.orders.filter((order) => order.outletId === outletId && order.status === "paid");
-        const total = paidOrders.reduce((sum, order) => sum + calcTotals(order).total, 0);
-        return {
-          ...state,
-          zReports: [
-            {
-              id: `z-${Date.now()}`,
-              outletId,
-              date: "Tonight",
-              sales: total,
-              tax: paidOrders.reduce((sum, order) => sum + calcTotals(order).cgst + calcTotals(order).sgst, 0),
-              cash: total * 0.2,
-              card: total * 0.45,
-              upi: total * 0.35,
-              reconciled: true
-            },
-            ...state.zReports
-          ]
-        };
-      })
+// ─── Waiter View ──────────────────────────────────────────────────────────────
+function WaiterView({ tables, menuItems, orders, token, onRefresh }) {
+  const [selectedTableId, setSelectedTableId] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null);
+  const [qty, setQty] = useState(1);
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const availTables = tables.filter((t) => t.status === "AVAILABLE" || t.status === "OCCUPIED");
+  const selectedTable = tables.find((t) => t.id === selectedTableId) || availTables[0];
+  const tableOrder = orders.find((o) => o.tableId === selectedTable?.id && ["OPEN", "PREPARING", "READY"].includes(o.status));
+  const selectedItem = menuItems.find((m) => m.id === selectedItemId) || menuItems.find((m) => m.available);
+
+  const createOrder = async () => {
+    if (!selectedTable || !selectedItem) return;
+    setSubmitting(true); setError("");
+    try {
+      if (tableOrder) {
+        // Add item to existing order
+        await apiFetch(`/orders/${tableOrder.id}/items`, {
+          method: "POST",
+          body: JSON.stringify({ menuItemId: selectedItem.id, quantity: qty, notes }),
+        }, token);
+      } else {
+        // Create new order
+        await apiFetch("/orders", {
+          method: "POST",
+          body: JSON.stringify({ tableId: selectedTable.id, items: [{ menuItemId: selectedItem.id, quantity: qty, notes }] }),
+        }, token);
+      }
+      setNotes(""); setQty(1);
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  return (
+    <section className="view waiter-grid">
+      <Header icon={<Smartphone />} title="Waiter App" subtitle="Live ordering connected to SQLite backend"
+        right={<button className="icon-button" onClick={onRefresh} title="Refresh"><RefreshCw size={18} /></button>} />
+
+      {/* Tables Panel */}
+      <div className="panel floor-panel">
+        <div className="section-title"><h2>Tables</h2><span>{tables.length} total</span></div>
+        <div className="floor-grid">
+          {tables.map((t) => {
+            const hasOrder = orders.some((o) => o.tableId === t.id && !["PAID", "CANCELLED"].includes(o.status));
+            const status = hasOrder ? (t.status === "AVAILABLE" ? "OCCUPIED" : t.status) : t.status;
+            return (
+              <button key={t.id}
+                className={`table-tile ${selectedTable?.id === t.id ? "selected" : ""} ${status.toLowerCase()}`}
+                onClick={() => setSelectedTableId(t.id)}>
+                <strong>T{t.number}</strong>
+                <span>{t.capacity} seats</span>
+                <em>{statusLabel(status)}</em>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Order Panel */}
+      <div className="panel order-panel">
+        <div className="section-title">
+          <h2>Table {selectedTable?.number} — Order</h2>
+          <span>{tableOrder ? `${tableOrder.orderItems?.length} items` : "No active order"}</span>
+        </div>
+        <div className="order-list">
+          {tableOrder?.orderItems?.map((item) => (
+            <div className="line-item" key={item.id}>
+              <div>
+                <strong>{item.menuItem?.name}</strong>
+                <span>×{item.quantity}{item.notes ? ` · ${item.notes}` : ""}</span>
+              </div>
+              <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+          )) || <Empty icon={<Grid3X3 />} text="Select a table and add items below." />}
+        </div>
+        {tableOrder && (
+          <div className="order-totals">
+            <span>Subtotal: <strong>₹{tableOrder.subtotal?.toFixed(2)}</strong></span>
+            <span>Tax: <strong>₹{tableOrder.tax?.toFixed(2)}</strong></span>
+            <span className="grand">Total: <strong>₹{tableOrder.total?.toFixed(2)}</strong></span>
+          </div>
+        )}
+      </div>
+
+      {/* Menu Panel */}
+      <div className="panel menu-panel">
+        <div className="section-title"><h2>Menu</h2><span>{menuItems.filter((m) => m.available).length} available</span></div>
+        <div className="menu-list">
+          {menuItems.map((dish) => (
+            <button key={dish.id}
+              className={`menu-row ${selectedItemId === dish.id ? "active" : ""} ${!dish.available ? "disabled" : ""}`}
+              disabled={!dish.available}
+              onClick={() => setSelectedItemId(dish.id)}>
+              <div>
+                <strong>{dish.name}</strong>
+                <span>{dish.category?.name} · {dish.prepTime} min</span>
+              </div>
+              <em>{dish.available ? `₹${dish.price}` : "Unavail."}</em>
+            </button>
+          ))}
+        </div>
+
+        {selectedItem && selectedTable && (
+          <div className="mod-box">
+            <strong>Add: {selectedItem.name}</strong>
+            <div className="stepper">
+              <button className="icon-button" onClick={() => setQty(Math.max(1, qty - 1))}><Minus size={16} /></button>
+              <span>{qty}</span>
+              <button className="icon-button" onClick={() => setQty(qty + 1)}><Plus size={16} /></button>
+            </div>
+            <input className="notes-input" placeholder="Special instructions..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+            {error && <p className="error-msg"><AlertTriangle size={14} /> {error}</p>}
+            <button className="secondary-action" onClick={createOrder} disabled={submitting}>
+              {submitting ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}
+              {tableOrder ? "Add to Order" : "Create Order"}
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
+// ─── KDS View ─────────────────────────────────────────────────────────────────
+function KdsView({ kitchenTickets, token, onRefresh }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+
+  const activeTickets = kitchenTickets.filter((t) => ["PENDING", "PREPARING", "READY"].includes(t.status));
+
+  const updateStatus = async (ticketId, status) => {
+    try {
+      await apiFetch(`/kitchen/${ticketId}`, { method: "PATCH", body: JSON.stringify({ status }) }, token);
+      await onRefresh();
+    } catch (err) { console.error(err); }
+  };
+
+  return (
+    <section className="view kds-view">
+      <Header icon={<ChefHat />} title="Kitchen Display System" subtitle="Live tickets from SQLite — real-time updates"
+        right={<div className="live-badge"><span className="pulse" /> Live</div>} />
+      <div className="ticket-grid">
+        {activeTickets.map((ticket) => {
+          const order = ticket.order;
+          const ageMs = now - new Date(ticket.createdAt).getTime();
+          const age = Math.floor(ageMs / 60000);
+          const urgent = age > 12;
+          return (
+            <article key={ticket.id} className={`ticket ${urgent ? "urgent" : ""}`}>
+              <div className="ticket-head">
+                <div>
+                  <strong>Table {order?.table?.number}</strong>
+                  <span>Order #{order?.id?.slice(-6)}</span>
+                </div>
+                <div className="timer"><Clock3 size={18} /> {age}m</div>
+              </div>
+              <StatusPill status={ticket.status} />
+              <div className="ticket-items">
+                {order?.orderItems?.map((item) => (
+                  <div key={item.id} className="kds-item">
+                    <strong>{item.menuItem?.name} ×{item.quantity}</strong>
+                    {item.notes && <span>· {item.notes}</span>}
+                  </div>
+                ))}
+              </div>
+              <div className="ticket-actions">
+                {ticket.status === "PENDING" && (
+                  <button className="kds-button" onClick={() => updateStatus(ticket.id, "PREPARING")}>
+                    <Flame size={22} /> Start
+                  </button>
+                )}
+                {ticket.status === "PREPARING" && (
+                  <button className="kds-button ready" onClick={() => updateStatus(ticket.id, "READY")}>
+                    <Bell size={22} /> Ready
+                  </button>
+                )}
+                {ticket.status === "READY" && (
+                  <button className="kds-button done" onClick={() => updateStatus(ticket.id, "SERVED")}>
+                    <Check size={22} /> Served
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+        {!activeTickets.length && <Empty icon={<ChefHat />} text="No active tickets. Orders fired by waiter appear here instantly." />}
+      </div>
+    </section>
+  );
+}
+
+// ─── Cashier View ─────────────────────────────────────────────────────────────
+function CashierView({ orders, token, onRefresh }) {
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [method, setMethod] = useState("CASH");
+  const [processing, setProcessing] = useState(false);
+  const [invoice, setInvoice] = useState(null);
+  const [error, setError] = useState("");
+
+  const openOrders = orders.filter((o) => !["PAID", "CANCELLED"].includes(o.status));
+  const selected = openOrders.find((o) => o.id === selectedOrderId) || openOrders[0];
+
+  const processPayment = async () => {
+    if (!selected) return;
+    setProcessing(true); setError("");
+    try {
+      await apiFetch("/payments", {
+        method: "POST",
+        body: JSON.stringify({ orderId: selected.id, method, amount: selected.total }),
+      }, token);
+      await onRefresh();
+      setSelectedOrderId(null);
+    } catch (err) { setError(err.message); }
+    finally { setProcessing(false); }
+  };
+
+  const fetchInvoice = async (paymentId) => {
+    try {
+      const res = await fetch(`${API_BASE}/payments/${paymentId}/invoice`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const text = await res.text();
+      setInvoice(text);
+    } catch (err) { console.error(err); }
+  };
+
+  const paidOrders = orders.filter((o) => o.status === "PAID").slice(0, 5);
+
+  return (
+    <section className="view cashier-grid">
+      <Header icon={<ReceiptText />} title="Cashier Terminal" subtitle="Live billing connected to backend payments API"
+        right={<button className="tool-button" onClick={onRefresh}><RefreshCw size={18} /> Refresh</button>} />
+
+      <div className="panel open-checks">
+        <div className="section-title"><h2>Open Checks</h2><span>{openOrders.length} orders</span></div>
+        {openOrders.length === 0 && <Empty icon={<ReceiptText />} text="No open orders." />}
+        {openOrders.map((o) => (
+          <button key={o.id} className={`check-row ${selected?.id === o.id ? "active" : ""}`} onClick={() => setSelectedOrderId(o.id)}>
+            <div>
+              <strong>Table {o.table?.number}</strong>
+              <span><StatusPill status={o.status} /> · {o.orderItems?.length} items</span>
+            </div>
+            <em>₹{o.total?.toFixed(2)}</em>
+          </button>
+        ))}
+      </div>
+
+      <div className="panel bill-panel">
+        {selected ? (
+          <>
+            <div className="section-title"><h2>Table {selected.table?.number} Bill</h2><StatusPill status={selected.status} /></div>
+            {selected.orderItems?.map((item) => (
+              <div className="bill-line" key={item.id}>
+                <div><strong>{item.menuItem?.name}</strong><span>×{item.quantity}{item.notes ? ` · ${item.notes}` : ""}</span></div>
+                <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+              </div>
+            ))}
+            <div className="totals">
+              <span>Subtotal <strong>₹{selected.subtotal?.toFixed(2)}</strong></span>
+              <span>Tax (5%) <strong>₹{selected.tax?.toFixed(2)}</strong></span>
+              <span className="grand">Total <strong>₹{selected.total?.toFixed(2)}</strong></span>
+            </div>
+          </>
+        ) : <Empty icon={<ReceiptText />} text="Select an open order." />}
+      </div>
+
+      <div className="panel payment-panel">
+        <div className="section-title"><h2>Payment</h2><span>Select method</span></div>
+        <div className="method-grid">
+          {[["CASH", <IndianRupee size={20} />], ["CARD", <CreditCard size={20} />], ["UPI", <QrCode size={20} />]].map(([label, icon]) => (
+            <button key={label} className={method === label ? "method active" : "method"} onClick={() => setMethod(label)}>
+              {icon}{label}
+            </button>
+          ))}
+        </div>
+        {error && <p className="error-msg"><AlertTriangle size={14} /> {error}</p>}
+        <button className="primary-action" disabled={!selected || processing} onClick={processPayment}>
+          {processing ? <Loader2 size={20} className="spin" /> : <Printer size={20} />}
+          {processing ? "Processing..." : `Pay ₹${selected?.total?.toFixed(2) || "0.00"} via ${method}`}
+        </button>
+
+        {/* Recent paid orders */}
+        {paidOrders.length > 0 && (
+          <>
+            <div className="section-title" style={{ marginTop: "1rem" }}><h2>Recent Paid</h2></div>
+            {paidOrders.map((o) => (
+              <div key={o.id} className="check-row">
+                <div><strong>Table {o.table?.number}</strong><span>₹{o.total?.toFixed(2)}</span></div>
+                {o.payments?.[0] && (
+                  <button className="tool-button" style={{ fontSize: "0.7rem" }} onClick={() => fetchInvoice(o.payments[0].id)}>
+                    <FileText size={14} /> Invoice
+                  </button>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {invoice && (
+          <div className="invoice-modal" onClick={() => setInvoice(null)}>
+            <pre className="invoice-text">{invoice}</pre>
+            <button className="secondary-action" onClick={() => setInvoice(null)}>Close</button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─── Manager View ─────────────────────────────────────────────────────────────
+function ManagerView({ dashboard, orders, tables, onRefresh }) {
+  return (
+    <section className="view manager-view">
+      <Header icon={<LayoutDashboard />} title="Manager Dashboard" subtitle="Live analytics from SQLite backend"
+        right={<><button className="tool-button" onClick={onRefresh}><RefreshCw size={18} /> Refresh</button><div className="live-badge"><span className="pulse" /> Live</div></>} />
+
+      <div className="metric-grid">
+        <Metric icon={<BadgeIndianRupee />} label="Today's Revenue" value={`₹${dashboard?.todayRevenue?.toFixed(2) || "0.00"}`} />
+        <Metric icon={<Utensils />} label="Tables Occupied" value={`${dashboard?.tableOccupancy?.occupiedTables || 0} / ${dashboard?.tableOccupancy?.totalTables || 0}`} />
+        <Metric icon={<CircleDollarSign />} label="Occupancy Rate" value={`${dashboard?.tableOccupancy?.occupancyRate || 0}%`} />
+        <Metric icon={<ChefHat />} label="Kitchen Queue" value={dashboard?.kitchenQueue?.totalActive || 0} />
+      </div>
+
+      <div className="manager-grid">
+        {/* Table Status */}
+        <div className="panel">
+          <div className="section-title"><h2>Table Status</h2><span>Live</span></div>
+          {tables.map((t) => (
+            <div className="health-row" key={t.id}>
+              <div><strong>Table {t.number}</strong><span>{t.capacity} seats</span></div>
+              <StatusPill status={t.status} />
+            </div>
+          ))}
+        </div>
+
+        {/* Popular Items */}
+        <div className="panel">
+          <div className="section-title"><h2>Top Selling Items</h2><span>All time</span></div>
+          {dashboard?.popularItems?.length > 0 ? dashboard.popularItems.map((item) => (
+            <div className="health-row" key={item.id}>
+              <div><strong>{item.name}</strong><span>{item.categoryName} · {item.quantitySold} sold</span></div>
+              <em>₹{item.price}</em>
+            </div>
+          )) : <Empty icon={<Utensils />} text="No sales data yet." />}
+        </div>
+
+        {/* Kitchen Queue */}
+        <div className="panel">
+          <div className="section-title"><h2>Kitchen Queue</h2><span>Live</span></div>
+          <div className="health-row">
+            <div><strong>Pending</strong><span>Not started</span></div>
+            <em>{dashboard?.kitchenQueue?.pending || 0}</em>
+          </div>
+          <div className="health-row">
+            <div><strong>Preparing</strong><span>In progress</span></div>
+            <em>{dashboard?.kitchenQueue?.preparing || 0}</em>
+          </div>
+          <div className="health-row">
+            <div><strong>Ready</strong><span>For serving</span></div>
+            <em>{dashboard?.kitchenQueue?.ready || 0}</em>
+          </div>
+        </div>
+
+        {/* Open Orders Summary */}
+        <div className="panel">
+          <div className="section-title"><h2>Active Orders</h2><span>{orders.filter((o) => !["PAID", "CANCELLED"].includes(o.status)).length} open</span></div>
+          {orders.filter((o) => !["PAID", "CANCELLED"].includes(o.status)).map((o) => (
+            <div className="health-row" key={o.id}>
+              <div><strong>Table {o.table?.number}</strong><span>{o.orderItems?.length} items</span></div>
+              <StatusPill status={o.status} />
+            </div>
+          ))}
+          {orders.filter((o) => !["PAID", "CANCELLED"].includes(o.status)).length === 0 && (
+            <Empty icon={<ReceiptText />} text="No active orders." />
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Shared Components ────────────────────────────────────────────────────────
 function NavButton({ active, onClick, icon, label }) {
   return (
     <button className={`nav-button ${active ? "active" : ""}`} onClick={onClick} title={label}>
@@ -520,350 +681,12 @@ function NavButton({ active, onClick, icon, label }) {
   );
 }
 
-function WaiterView({ state, actions }) {
-  const [selectedMenuId, setSelectedMenuId] = useState("");
-  const [mods, setMods] = useState([]);
-  const outletTables = tables.filter((table) => table.outletId === state.activeOutletId);
-  const table = tables.find((entry) => entry.id === state.selectedTableId) || outletTables[0];
-  const order = state.orders.find((entry) => entry.tableId === table?.id && entry.status !== "paid");
-  const outletMenu = menu.filter((item) => item.outletId === state.activeOutletId);
-  const selectedDish = menu.find((item) => item.id === selectedMenuId) || outletMenu[0];
-
-  useEffect(() => {
-    if (outletMenu[0] && !outletMenu.some((dish) => dish.id === selectedMenuId)) {
-      setSelectedMenuId(outletMenu[0].id);
-      setMods([]);
-    }
-  }, [state.activeOutletId, selectedMenuId, outletMenu]);
-
-  const addSelected = () => {
-    if (!selectedDish) return;
-    actions.addItem(table.id, selectedDish.id, mods);
-    setMods([]);
-  };
-
-  return (
-    <section className="view waiter-grid">
-      <Header
-        icon={<Smartphone />}
-        title="Waiter App"
-        subtitle="One-handed ordering, honest item state, offline queue"
-        right={
-          <div className="header-actions">
-            <button className="tool-button" onClick={actions.toggleOnline}>{state.online ? <Wifi size={18} /> : <WifiOff size={18} />}{state.online ? "Online" : "Offline"}</button>
-            <button className="icon-button" onClick={actions.reset} title="Reset demo"><RefreshCw size={18} /></button>
-          </div>
-        }
-      />
-      <div className="panel outlet-strip">
-        {properties.flatMap((property) =>
-          property.outlets.map((outlet) => (
-            <button key={outlet.id} className={state.activeOutletId === outlet.id ? "chip active" : "chip"} onClick={() => actions.setOutlet(outlet.id)}>
-              <Store size={16} />
-              {outlet.name}
-            </button>
-          ))
-        )}
-      </div>
-      <div className="panel floor-panel">
-        <div className="section-title">
-          <h2>Floor Plan</h2>
-          <span>{outletTables.length} tables</span>
-        </div>
-        <div className="floor-grid">
-          {outletTables.map((entry) => {
-            const liveOrder = state.orders.find((orderEntry) => orderEntry.tableId === entry.id && orderEntry.status !== "paid");
-            const status = liveOrder?.status || "free";
-            return (
-              <button
-                key={entry.id}
-                className={`table-tile ${state.selectedTableId === entry.id ? "selected" : ""} ${status}`}
-                onClick={() => actions.selectTable(entry.id)}
-              >
-                <strong>{entry.name}</strong>
-                <span>{entry.seats} seats</span>
-                <em>{statusLabel(status)}</em>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div className="panel order-panel">
-        <div className="section-title">
-          <h2>{table?.name} Check</h2>
-          <span>{order ? `${order.items.length} items` : "No open order"}</span>
-        </div>
-        <div className="order-list">
-          {order?.items.map((item) => (
-            <div className="line-item" key={item.id}>
-              <div>
-                <strong>{item.name}</strong>
-                <span>{item.modifiers.length ? item.modifiers.join(", ") : "No modifiers"}</span>
-              </div>
-              <StatusPill status={item.status} />
-            </div>
-          )) || <Empty icon={<Grid3X3 />} text="Tap a dish to start this table." />}
-        </div>
-        <button className="primary-action" disabled={!order?.items.length || order.status === "sent"} onClick={() => actions.fireOrder(table.id)}>
-          <Send size={20} /> Fire to Kitchen
-        </button>
-      </div>
-      <div className="panel menu-panel">
-        <div className="section-title">
-          <h2>Outlet Menu</h2>
-          <span>Stock aware</span>
-        </div>
-        <div className="menu-list">
-          {outletMenu.map((dish) => (
-            <button key={dish.id} className={`menu-row ${selectedMenuId === dish.id ? "active" : ""}`} disabled={dish.stock <= 0} onClick={() => setSelectedMenuId(dish.id)}>
-              <div>
-                <strong>{dish.name}</strong>
-                <span>{dish.station} · {dish.prepMins} min</span>
-              </div>
-              <em>{dish.stock <= 0 ? "Blocked" : `₹${dish.price}`}</em>
-            </button>
-          ))}
-        </div>
-        {selectedDish && (
-          <div className="mod-box">
-            <strong>Modifiers</strong>
-            <div className="modifier-grid">
-              {selectedDish.modifiers.map((mod) => (
-                <button
-                  key={mod}
-                  className={mods.includes(mod) ? "chip active" : "chip"}
-                  onClick={() => setMods((current) => (current.includes(mod) ? current.filter((entry) => entry !== mod) : [...current, mod]))}
-                >
-                  {mod}
-                </button>
-              ))}
-            </div>
-            <button className="secondary-action" onClick={addSelected} disabled={selectedDish.stock <= 0}>
-              <Plus size={18} /> Add Dish
-            </button>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function KdsView({ state, actions, now }) {
-  const activeTickets = state.orders.filter((order) => ["sent", "preparing", "ready"].includes(order.status));
-  return (
-    <section className="view kds-view">
-      <Header icon={<ChefHat />} title="Kitchen Display" subtitle="Large ticket queue with visible age and bump controls" right={<LiveBadge />} />
-      <div className="ticket-grid">
-        {activeTickets.map((order) => {
-          const age = Math.floor((now - order.createdAt) / 60000);
-          const urgent = age >= Math.max(...order.items.map((item) => item.prepMins), 8);
-          return (
-            <article key={order.id} className={`ticket ${urgent ? "urgent" : ""}`}>
-              <div className="ticket-head">
-                <div>
-                  <strong>{tableName(order.tableId)}</strong>
-                  <span>{outletName(order.outletId)}</span>
-                </div>
-                <div className="timer"><Clock3 size={18} /> {age}m</div>
-              </div>
-              <StatusPill status={order.status} />
-              <div className="ticket-items">
-                {order.items.map((item) => (
-                  <div key={item.id} className="kds-item">
-                    <strong>{item.name}</strong>
-                    <span>{item.modifiers.length ? item.modifiers.join(" · ") : "Standard"}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="ticket-actions">
-                <button className="kds-button" onClick={() => actions.startTicket(order.id)}><Flame size={24} /> Start</button>
-                <button className="kds-button ready" onClick={() => actions.bumpTicket(order.id)}><Bell size={24} /> Ready</button>
-                <button className="kds-button done" onClick={() => actions.completeTicket(order.id)}><Check size={24} /> Done</button>
-              </div>
-            </article>
-          );
-        })}
-        {!activeTickets.length && <Empty icon={<ChefHat />} text="No live tickets. Fired waiter orders appear here instantly." />}
-      </div>
-    </section>
-  );
-}
-
-function CashierView({ state, actions }) {
-  const [split, setSplit] = useState(2);
-  const [method, setMethod] = useState("UPI");
-  const openOrders = state.orders.filter((order) => order.status !== "paid");
-  const selected = openOrders.find((order) => order.tableId === state.selectedCashierTableId) || openOrders[0];
-  const totals = selected ? calcTotals(selected) : null;
-  useEffect(() => {
-    if (selected && selected.tableId !== state.selectedCashierTableId) actions.selectCashierTable(selected.tableId);
-  }, [selected]);
-
-  return (
-    <section className="view cashier-grid">
-      <Header icon={<ReceiptText />} title="Cashier Terminal" subtitle="Fast check lookup, split payment, GST, receipt, and Z-report" right={<button className="tool-button" onClick={() => actions.runZ(state.activeOutletId)}><FileText size={18} /> Run Z</button>} />
-      <div className="panel open-checks">
-        <div className="section-title">
-          <h2>Open Tables</h2>
-          <span>{openOrders.length} checks</span>
-        </div>
-        {openOrders.map((order) => (
-          <button key={order.id} className={`check-row ${selected?.id === order.id ? "active" : ""}`} onClick={() => actions.selectCashierTable(order.tableId)}>
-            <div>
-              <strong>{tableName(order.tableId)}</strong>
-              <span>{outletName(order.outletId)} · {order.items.length} items</span>
-            </div>
-            <em>₹{calcTotals(order).total.toFixed(2)}</em>
-          </button>
-        ))}
-      </div>
-      <div className="panel bill-panel">
-        {selected ? (
-          <>
-            <div className="section-title">
-              <h2>{tableName(selected.tableId)} Bill</h2>
-              <StatusPill status={selected.status} />
-            </div>
-            {selected.items.map((item) => (
-              <div className="bill-line" key={item.id}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>{item.modifiers.join(", ") || "Standard"}</span>
-                </div>
-                <span>₹{item.price}</span>
-              </div>
-            ))}
-            <div className="totals">
-              <span>Subtotal <strong>₹{totals.subtotal.toFixed(2)}</strong></span>
-              <span>Discount <strong>-₹{totals.discount.toFixed(2)}</strong></span>
-              <span>CGST 5% <strong>₹{totals.cgst.toFixed(2)}</strong></span>
-              <span>SGST 5% <strong>₹{totals.sgst.toFixed(2)}</strong></span>
-              <span className="grand">Total <strong>₹{totals.total.toFixed(2)}</strong></span>
-            </div>
-          </>
-        ) : <Empty icon={<ReceiptText />} text="No open checks." />}
-      </div>
-      <div className="panel payment-panel">
-        <div className="section-title">
-          <h2>Payment</h2>
-          <span>Mock tender</span>
-        </div>
-        <div className="stepper">
-          <button className="icon-button" onClick={() => setSplit(Math.max(1, split - 1))}><Minus size={18} /></button>
-          <div><Split size={18} /> {split} guests</div>
-          <button className="icon-button" onClick={() => setSplit(split + 1)}><Plus size={18} /></button>
-        </div>
-        <div className="method-grid">
-          {[
-            ["Cash", <IndianRupee size={20} />],
-            ["Card", <CreditCard size={20} />],
-            ["UPI", <QrCode size={20} />]
-          ].map(([label, icon]) => (
-            <button key={label} className={method === label ? "method active" : "method"} onClick={() => setMethod(label)}>
-              {icon}{label}
-            </button>
-          ))}
-        </div>
-        <button className="secondary-action" disabled={!selected} onClick={() => selected && actions.requestDiscount(selected.id, 150)}>
-          <ShieldCheck size={18} /> Request Discount Approval
-        </button>
-        <button className="primary-action" disabled={!selected || selected.approval === "pending"} onClick={() => selected && actions.pay(selected.id, split, method)}>
-          <Printer size={20} /> Pay & Print Receipt
-        </button>
-        {selected?.approval === "pending" && <p className="warning"><AlertTriangle size={16} /> Waiting for manager approval before payment.</p>}
-      </div>
-    </section>
-  );
-}
-
-function ManagerView({ state, actions, now }) {
-  const paid = state.orders.filter((order) => order.status === "paid");
-  const open = state.orders.filter((order) => order.status !== "paid");
-  const sales = paid.reduce((sum, order) => sum + calcTotals(order).total, 0);
-  const moving = Object.values(
-    state.orders.flatMap((order) => order.items).reduce((acc, item) => {
-      acc[item.name] = acc[item.name] || { name: item.name, qty: 0, sales: 0 };
-      acc[item.name].qty += 1;
-      acc[item.name].sales += item.price;
-      return acc;
-    }, {})
-  ).sort((a, b) => b.qty - a.qty);
-
-  return (
-    <section className="view manager-view">
-      <Header icon={<LayoutDashboard />} title="Manager Dashboard" subtitle="Chain-level view across properties and outlets" right={<LiveBadge />} />
-      <div className="metric-grid">
-        <Metric icon={<BadgeIndianRupee />} label="Paid sales" value={`₹${sales.toFixed(0)}`} />
-        <Metric icon={<Utensils />} label="Open tables" value={open.length} />
-        <Metric icon={<Building2 />} label="Properties" value={properties.length} />
-        <Metric icon={<ShieldCheck />} label="Approvals" value={state.approvals.filter((app) => app.status === "pending").length} />
-      </div>
-      <div className="manager-grid">
-        <div className="panel">
-          <div className="section-title"><h2>Outlet Health</h2><span>Live</span></div>
-          {properties.flatMap((property) => property.outlets.map((outlet) => {
-            const outletOrders = state.orders.filter((order) => order.outletId === outlet.id);
-            const waiting = outletOrders.filter((order) => ["sent", "preparing"].includes(order.status)).length;
-            return (
-              <div className="health-row" key={outlet.id}>
-                <div>
-                  <strong>{outlet.name}</strong>
-                  <span>{property.city} · {waiting} kitchen ticket{waiting === 1 ? "" : "s"}</span>
-                </div>
-                <em>{outletOrders.filter((order) => order.status !== "paid").length} open</em>
-              </div>
-            );
-          }))}
-        </div>
-        <div className="panel">
-          <div className="section-title"><h2>Moving Items</h2><span>Today</span></div>
-          {moving.slice(0, 5).map((item) => (
-            <div className="health-row" key={item.name}>
-              <div><strong>{item.name}</strong><span>{item.qty} sold</span></div>
-              <em>₹{item.sales}</em>
-            </div>
-          ))}
-        </div>
-        <div className="panel approvals">
-          <div className="section-title"><h2>Approval Gate</h2><span>Manager only</span></div>
-          {state.approvals.map((approval) => (
-            <div className={`approval ${approval.status}`} key={approval.id}>
-              <div>
-                <strong>{approval.type} · ₹{approval.amount}</strong>
-                <span>{tableName(state.orders.find((order) => order.id === approval.orderId)?.tableId)} · {minutesAgo(now, approval.requestedAt)} ago</span>
-              </div>
-              {approval.status === "pending" ? (
-                <div className="approval-actions">
-                  <button className="icon-button approve" onClick={() => actions.decideApproval(approval.id, "approved")}><Check size={18} /></button>
-                  <button className="icon-button deny" onClick={() => actions.decideApproval(approval.id, "denied")}><Minus size={18} /></button>
-                </div>
-              ) : <StatusPill status={approval.status} />}
-            </div>
-          ))}
-        </div>
-        <div className="panel">
-          <div className="section-title"><h2>Last Close</h2><span>Reconciliation</span></div>
-          {state.zReports.slice(0, 3).map((report) => (
-            <div className="health-row" key={report.id}>
-              <div><strong>{outletName(report.outletId)}</strong><span>{report.date} · tax ₹{report.tax.toFixed(0)}</span></div>
-              <em>{report.reconciled ? "Reconciled" : "Mismatch"}</em>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function Header({ icon, title, subtitle, right }) {
   return (
     <header className="page-header">
       <div className="title-block">
         <div className="title-icon">{React.cloneElement(icon, { size: 24 })}</div>
-        <div>
-          <h1>{title}</h1>
-          <p>{subtitle}</p>
-        </div>
+        <div><h1>{title}</h1><p>{subtitle}</p></div>
       </div>
       {right}
     </header>
@@ -881,7 +704,7 @@ function Metric({ icon, label, value }) {
 }
 
 function StatusPill({ status }) {
-  return <span className={`status ${status}`}>{statusLabel(status)}</span>;
+  return <span className={`status ${status?.toLowerCase()}`}>{statusLabel(status)}</span>;
 }
 
 function Empty({ icon, text }) {
@@ -891,45 +714,6 @@ function Empty({ icon, text }) {
       <span>{text}</span>
     </div>
   );
-}
-
-function LiveBadge() {
-  return <div className="live-badge"><span className="pulse" /> Live</div>;
-}
-
-function statusLabel(status) {
-  const labels = {
-    free: "Free",
-    open: "Open",
-    sent: "Kitchen",
-    queued: "Queued",
-    offline: "Offline",
-    preparing: "Preparing",
-    ready: "Ready",
-    completed: "Completed",
-    paid: "Paid",
-    approved: "Approved",
-    denied: "Denied",
-    pending: "Pending",
-    draft: "Draft"
-  };
-  return labels[status] || status;
-}
-
-function propertyForOutlet(outletId) {
-  return properties.find((property) => property.outlets.some((outlet) => outlet.id === outletId));
-}
-
-function outletName(outletId) {
-  return properties.flatMap((property) => property.outlets).find((outlet) => outlet.id === outletId)?.name || "Outlet";
-}
-
-function tableName(tableId) {
-  return tables.find((table) => table.id === tableId)?.name || "Table";
-}
-
-function minutesAgo(now, then) {
-  return `${Math.max(0, Math.floor((now - then) / 60000))}m`;
 }
 
 createRoot(document.getElementById("root")).render(<App />);

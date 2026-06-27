@@ -4,7 +4,7 @@ node_modules/
 # Build output
 dist/
 
-# Environment files (contains secrets)
+# Environment files (contains secrets — use .env.example instead)
 .env
 .env.local
 .env.production
@@ -14,9 +14,10 @@ dist/
 *.db-journal
 *.db-wal
 *.db-shm
+prisma/dev.db
 
-# Prisma generated client
-backend/node_modules/
+# Prisma migrations lock (keep migrations folder, not lock)
+prisma/migrations/migration_lock.toml
 
 # Logs
 *.log

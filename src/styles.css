@@ -793,3 +793,254 @@ button {
     min-height: 76px;
   }
 }
+
+/* ── Login Screen ─────────────────────────────────────── */
+.login-container {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #fff8f2, #ffedd5, #fff8f2);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 40px;
+  display: grid;
+  gap: 24px;
+}
+
+.login-brand {
+  text-align: center;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+}
+
+.login-brand svg {
+  color: var(--orange);
+}
+
+.login-brand h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--ink);
+}
+
+.login-brand p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-group {
+  display: grid;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.form-group input {
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: #fffaf5;
+  transition: border-color 150ms;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--orange);
+  background: white;
+}
+
+.login-btn {
+  width: 100%;
+  margin: 0;
+}
+
+.login-error {
+  margin: 0;
+  padding: 10px 14px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-hints {
+  padding: 16px;
+  background: #fffaf5;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.login-hints p {
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+
+.login-hints ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
+/* ── Loading Screen ───────────────────────────────────── */
+.loading-screen {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  color: var(--muted);
+}
+
+.loading-screen svg {
+  color: var(--orange);
+}
+
+/* ── Spin Animation ───────────────────────────────────── */
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Logout Button ────────────────────────────────────── */
+.logout-btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  cursor: pointer;
+  transition: background 150ms;
+  margin-top: auto;
+}
+
+.logout-btn:hover {
+  background: #fecaca;
+}
+
+/* ── Error message ────────────────────────────────────── */
+.error-msg {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Notes Input ──────────────────────────────────────── */
+.notes-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  background: #fffaf5;
+}
+
+.notes-input:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+
+/* ── Order Totals in Waiter ───────────────────────────── */
+.order-totals {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.order-totals .grand {
+  font-size: 1.1rem;
+  color: var(--orange-dark);
+  font-weight: 900;
+}
+
+/* ── Invoice Modal ────────────────────────────────────── */
+.invoice-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: grid;
+  place-items: center;
+  z-index: 999;
+  padding: 20px;
+}
+
+.invoice-text {
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-family: monospace;
+  max-height: 80vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+}
+
+/* ── Table Status Colors ──────────────────────────────── */
+.table-tile.available { background: #ffffff; }
+.table-tile.occupied  { background: #ffedd5; }
+.table-tile.reserved  { background: #dbeafe; }
+.table-tile.billing   { background: #fef9c3; }
+
+/* ── Status pill extras ───────────────────────────────── */
+.status.open, .status.occupied { background: #ffedd5; color: var(--orange-dark); }
+.status.available               { background: #dcfce7; color: #166534; }
+.status.paid                    { background: #dcfce7; color: #166534; }
+.status.cancelled               { background: #fee2e2; color: #991b1b; }
+.status.ready                   { background: #d1fae5; color: #065f46; }
+.status.preparing               { background: #fef3c7; color: #92400e; }
+
+/* ── Disabled menu row ────────────────────────────────── */
+.menu-row.disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Waiter grid header spans full width ─────────────── */
+.waiter-grid .page-header { grid-column: 1 / -1; }
+
