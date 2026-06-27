@@ -1,0 +1,795 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #fff8f2;
+  color: #2e2118;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --orange: #f97316;
+  --orange-dark: #c2410c;
+  --orange-soft: #ffedd5;
+  --ink: #2e2118;
+  --muted: #75665a;
+  --line: #f1d9c3;
+  --panel: #ffffff;
+  --danger: #dc2626;
+  --ok: #16a34a;
+  --warn: #f59e0b;
+  --shadow: 0 18px 55px rgba(194, 65, 12, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button {
+  border: 0;
+  font: inherit;
+}
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  background:
+    linear-gradient(180deg, rgba(255, 237, 213, 0.65), rgba(255, 248, 242, 0.2) 34%),
+    #fff8f2;
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  border-right: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.brand,
+.sync-card,
+.title-block,
+.section-title,
+.line-item,
+.ticket-head,
+.bill-line,
+.health-row,
+.approval,
+.stepper,
+.live-badge,
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 12px;
+}
+
+.brand-mark,
+.title-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--orange);
+  color: white;
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.25);
+}
+
+.brand strong,
+.title-block h1 {
+  display: block;
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.brand span,
+.title-block p,
+.section-title span,
+.line-item span,
+.menu-row span,
+.check-row span,
+.kds-item span,
+.health-row span,
+.approval span,
+.bill-line span,
+.sync-card span {
+  color: var(--muted);
+}
+
+.role-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-button,
+.tool-button,
+.icon-button,
+.chip,
+.table-tile,
+.menu-row,
+.check-row,
+.method,
+.kds-button,
+.primary-action,
+.secondary-action {
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.nav-button {
+  height: 46px;
+  border-radius: 8px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  background: transparent;
+}
+
+.nav-button.active,
+.nav-button:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.sync-card {
+  margin-top: auto;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.dot,
+.pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ok);
+}
+
+.dot.offline {
+  background: var(--danger);
+}
+
+.surface {
+  padding: 28px;
+  min-width: 0;
+}
+
+.view {
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.title-block {
+  gap: 12px;
+}
+
+.title-block h1 {
+  font-size: clamp(1.55rem, 2.2vw, 2.4rem);
+}
+
+.title-block p {
+  margin: 4px 0 0;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.section-title {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 10px;
+}
+
+.section-title h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.waiter-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr) minmax(300px, 0.9fr);
+  gap: 16px;
+}
+
+.waiter-grid .page-header,
+.waiter-grid .outlet-strip {
+  grid-column: 1 / -1;
+}
+
+.outlet-strip {
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #fff7ed;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.chip.active {
+  background: var(--orange);
+  color: white;
+  border-color: var(--orange);
+}
+
+.floor-grid {
+  padding: 0 16px 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: 10px;
+}
+
+.table-tile {
+  min-height: 112px;
+  border-radius: 8px;
+  background: white;
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px;
+  color: var(--ink);
+}
+
+.table-tile strong {
+  font-size: 1.45rem;
+}
+
+.table-tile em,
+.menu-row em,
+.check-row em,
+.health-row em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+.table-tile.free {
+  background: #ffffff;
+}
+
+.table-tile.open,
+.table-tile.offline {
+  background: #fff7ed;
+}
+
+.table-tile.sent,
+.table-tile.preparing {
+  background: #ffedd5;
+}
+
+.table-tile.ready,
+.table-tile.completed {
+  background: #dcfce7;
+}
+
+.table-tile.selected {
+  outline: 3px solid var(--orange);
+}
+
+.order-list,
+.menu-list,
+.ticket-items {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.line-item,
+.bill-line,
+.health-row,
+.approval {
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fffaf5;
+  border: 1px solid #f7dfc8;
+}
+
+.line-item div,
+.bill-line div,
+.check-row div,
+.menu-row div,
+.health-row div,
+.approval div {
+  display: grid;
+  gap: 4px;
+}
+
+.status {
+  min-width: 78px;
+  min-height: 28px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: #f3f4f6;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.status.sent,
+.status.preparing,
+.status.pending,
+.status.queued {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.status.ready,
+.status.completed,
+.status.approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.denied,
+.status.offline {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.primary-action,
+.secondary-action,
+.tool-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-weight: 800;
+}
+
+.primary-action {
+  width: calc(100% - 32px);
+  margin: 0 16px 16px;
+  background: var(--orange);
+  color: white;
+}
+
+.secondary-action,
+.tool-button {
+  background: #fff7ed;
+  border: 1px solid var(--line);
+  color: var(--orange-dark);
+}
+
+.primary-action:disabled,
+.secondary-action:disabled,
+.menu-row:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.menu-row,
+.check-row {
+  width: 100%;
+  min-height: 64px;
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  background: white;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.menu-row.active,
+.check-row.active {
+  background: var(--orange-soft);
+  border-color: var(--orange);
+}
+
+.mod-box {
+  border-top: 1px solid var(--line);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.modifier-grid,
+.method-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kds-view {
+  max-width: none;
+}
+
+.ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+.ticket {
+  min-height: 420px;
+  padding: 18px;
+  border-radius: 8px;
+  background: white;
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ticket.urgent {
+  border-color: var(--danger);
+  background: #fff1f2;
+}
+
+.ticket-head {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ticket-head strong {
+  font-size: 2rem;
+}
+
+.timer,
+.live-badge {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 900;
+  color: var(--orange-dark);
+}
+
+.kds-item {
+  padding: 14px;
+  border-radius: 8px;
+  background: #fffaf5;
+  border: 1px solid var(--line);
+}
+
+.kds-item strong {
+  font-size: 1.15rem;
+}
+
+.ticket-actions {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.kds-button {
+  min-height: 86px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  font-weight: 900;
+  background: #fff7ed;
+  color: var(--orange-dark);
+  border: 1px solid var(--line);
+}
+
+.kds-button.ready {
+  background: var(--orange);
+  color: white;
+}
+
+.kds-button.done {
+  background: #16a34a;
+  color: white;
+}
+
+.cashier-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(320px, 1fr) 300px;
+  gap: 16px;
+}
+
+.cashier-grid .page-header {
+  grid-column: 1 / -1;
+}
+
+.open-checks,
+.bill-panel,
+.payment-panel {
+  padding-bottom: 16px;
+}
+
+.open-checks .check-row {
+  width: calc(100% - 32px);
+  margin: 0 16px 10px;
+}
+
+.bill-line,
+.totals {
+  margin: 0 16px 10px;
+}
+
+.totals {
+  padding-top: 12px;
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.totals span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.totals .grand {
+  font-size: 1.3rem;
+  color: var(--orange-dark);
+}
+
+.stepper {
+  margin: 0 16px 14px;
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf5;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: inline-grid;
+  place-items: center;
+  background: white;
+  color: var(--orange-dark);
+  border: 1px solid var(--line);
+}
+
+.method-grid {
+  padding: 0 16px 14px;
+}
+
+.method {
+  min-height: 48px;
+  flex: 1;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: white;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  font-weight: 800;
+}
+
+.method.active {
+  background: var(--orange);
+  color: white;
+}
+
+.payment-panel .secondary-action,
+.payment-panel .primary-action {
+  width: calc(100% - 32px);
+  margin: 0 16px 12px;
+}
+
+.warning {
+  margin: 0 16px;
+  color: #991b1b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.metric {
+  min-height: 120px;
+  padding: 16px;
+  border-radius: 8px;
+  display: grid;
+  align-content: space-between;
+  background: white;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.metric svg {
+  color: var(--orange);
+}
+
+.metric span {
+  color: var(--muted);
+}
+
+.metric strong {
+  font-size: 2rem;
+}
+
+.manager-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.health-row,
+.approval {
+  margin: 0 16px 10px;
+}
+
+.approval-actions {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.icon-button.approve {
+  color: #166534;
+}
+
+.icon-button.deny {
+  color: #991b1b;
+}
+
+.empty {
+  min-height: 220px;
+  padding: 30px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pulse {
+  animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1100px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+  }
+
+  .role-nav {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+  }
+
+  .sync-card {
+    margin-top: 0;
+    min-width: 170px;
+  }
+
+  .waiter-grid,
+  .cashier-grid,
+  .manager-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cashier-grid .payment-panel,
+  .waiter-grid .menu-panel {
+    grid-column: 1 / -1;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .surface {
+    padding: 16px;
+  }
+
+  .rail {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .brand div:last-child,
+  .nav-button span,
+  .sync-card div {
+    display: none;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .waiter-grid,
+  .cashier-grid,
+  .manager-grid,
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cashier-grid .payment-panel,
+  .waiter-grid .menu-panel {
+    grid-column: auto;
+  }
+
+  .floor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ticket-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .kds-button {
+    min-height: 76px;
+  }
+}
