@@ -17,17 +17,25 @@ async function main() {
       name: "Terralogic Grand Hyderabad - Skyline Rooftop",
       brandName: "Skyline Rooftop",
       address: "Skyline Rooftop, Hyderabad",
-      categories: ["Starters", "Grill", "Fry"],
+      categories: ["Starters", "Grill", "Fry", "Main Course", "Desserts", "Beverages"],
       menuItems: [
         { name: "Paneer Tikka", description: "Toasted cottage cheese with modifiers", price: 340, prepTime: 12, veg: true, categoryName: "Starters" },
         { name: "Smoked Corn Tacos", description: "Smoked sweet corn tacos", price: 290, prepTime: 9, veg: true, categoryName: "Grill" },
         { name: "Masala Fries", description: "Crispy fries with peri peri seasoning", price: 210, prepTime: 6, veg: true, categoryName: "Fry" },
+        { name: "Chicken Tikka Masala", description: "Roasted marinated chicken chunks in spiced curry sauce", price: 450, prepTime: 18, veg: false, categoryName: "Main Course" },
+        { name: "Butter Naan", description: "Soft Indian flatbread brushed with butter", price: 60, prepTime: 5, veg: true, categoryName: "Main Course" },
+        { name: "Chocolate Lava Cake", description: "Warm chocolate cake with molten center", price: 250, prepTime: 10, veg: true, categoryName: "Desserts" },
+        { name: "Virgin Mojito", description: "Refreshing mint and lime mocktail", price: 180, prepTime: 3, veg: true, categoryName: "Beverages" },
       ],
       tables: [
         { number: 1, capacity: 2 }, // T1
         { number: 2, capacity: 4 }, // T2
         { number: 3, capacity: 4 }, // T3
         { number: 4, capacity: 6 }, // T4
+        { number: 5, capacity: 2 }, // T5
+        { number: 6, capacity: 4 }, // T6
+        { number: 7, capacity: 8 }, // T7
+        { number: 8, capacity: 10 }, // T8
       ],
     },
     {

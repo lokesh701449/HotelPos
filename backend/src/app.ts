@@ -8,7 +8,13 @@ import { errorHandler } from "./middleware/error.middleware";
 const app = express();
 
 // Middleware Setup
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: false,
+    contentSecurityPolicy: false,
+  })
+);
 app.use(
   cors({
     origin: [

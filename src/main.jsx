@@ -234,7 +234,13 @@ function App() {
 
   if (!auth) return <LoginScreen onLogin={handleLogin} />;
 
-  const routeRole = ["waiter", "kds", "cashier", "manager"].includes(activeRole) ? activeRole : "waiter";
+  let allowedRoles = [];
+  if (["ADMIN", "MANAGER"].includes(userRole)) allowedRoles = ["waiter", "kds", "cashier", "manager"];
+  else if (userRole === "WAITER") allowedRoles = ["waiter"];
+  else if (userRole === "CHEF") allowedRoles = ["kds"];
+  else if (userRole === "CASHIER") allowedRoles = ["cashier"];
+
+  const routeRole = allowedRoles.includes(activeRole) ? activeRole : allowedRoles[0];
 
   const activeTickets = kitchenTickets.filter((t) => ["PENDING", "PREPARING", "READY"].includes(t.status));
 
@@ -249,10 +255,18 @@ function App() {
           </div>
         </div>
         <nav className="role-nav" aria-label="POS surfaces">
-          <NavButton active={routeRole === "waiter"} onClick={() => setRole("waiter")} icon={<Smartphone />} label="Waiter" />
-          <NavButton active={routeRole === "kds"} onClick={() => setRole("kds")} icon={<ChefHat />} label={`KDS ${activeTickets.length > 0 ? `(${activeTickets.length})` : ""}`} />
-          <NavButton active={routeRole === "cashier"} onClick={() => setRole("cashier")} icon={<ReceiptText />} label="Cashier" />
-          <NavButton active={routeRole === "manager"} onClick={() => setRole("manager")} icon={<LayoutDashboard />} label="Manager" />
+          {(["ADMIN", "MANAGER", "WAITER"].includes(userRole)) && (
+            <NavButton active={routeRole === "waiter"} onClick={() => setRole("waiter")} icon={<Smartphone />} label="Waiter" />
+          )}
+          {(["ADMIN", "MANAGER", "CHEF"].includes(userRole)) && (
+            <NavButton active={routeRole === "kds"} onClick={() => setRole("kds")} icon={<ChefHat />} label={`KDS ${activeTickets.length > 0 ? `(${activeTickets.length})` : ""}`} />
+          )}
+          {(["ADMIN", "MANAGER", "CASHIER"].includes(userRole)) && (
+            <NavButton active={routeRole === "cashier"} onClick={() => setRole("cashier")} icon={<ReceiptText />} label="Cashier" />
+          )}
+          {(["ADMIN", "MANAGER"].includes(userRole)) && (
+            <NavButton active={routeRole === "manager"} onClick={() => setRole("manager")} icon={<LayoutDashboard />} label="Manager" />
+          )}
         </nav>
         <div className="sync-card">
           <span className="dot online" />
