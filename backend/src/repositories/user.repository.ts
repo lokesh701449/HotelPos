@@ -21,6 +21,20 @@ export class UserRepository {
       data,
     });
   }
+
+  async findAllByTenant(tenantId: string) {
+    return prisma.user.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
 }
 
 export const userRepository = new UserRepository();

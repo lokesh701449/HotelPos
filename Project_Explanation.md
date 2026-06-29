@@ -59,3 +59,6 @@ The database is designed to support **Multi-Tenancy**. This means a single datab
 
 **Q: Why is Prisma better than writing SQL?**
 **A:** Prisma provides Type Safety. If I misspell a column name like `menItem` instead of `menuItem`, Prisma will throw a TypeScript error before the app even compiles. With raw SQL, that error would crash the app at runtime in production.
+
+**Q: Does the system support multiple waiters working at the same time?**
+**A:** Yes! The database schema includes a `waiterId` on every `Order`. The Manager can use the "Staff Management" screen to create accounts for unlimited waiters. Because of WebSockets, if Waiter A opens an order for Table 2 on their mobile device, Waiter B's screen will instantly update to show Table 2 as "Occupied", preventing duplicate orders. The system permanently records exactly which waiter placed which order.

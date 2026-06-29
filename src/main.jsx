@@ -33,12 +33,14 @@ import {
   Utensils,
   Wifi,
   WifiOff,
+  Users,
+  UserPlus
 } from "lucide-react";
 import { io } from "socket.io-client";
 import "./styles.css";
 
-const API_BASE = "http://localhost:5003/api";
-const SOCKET_URL = "http://localhost:5003";
+const API_BASE = "http://localhost:5005/api";
+const SOCKET_URL = "http://localhost:5005";
 const TAX_RATE = 0.05;
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
@@ -150,6 +152,7 @@ function App() {
   const [orders, setOrders] = useState([]);
   const [kitchenTickets, setKitchenTickets] = useState([]);
   const [dashboard, setDashboard] = useState(null);
+  const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const token = auth?.token;
@@ -160,16 +163,26 @@ function App() {
   const fetchAll = useCallback(async () => {
     if (!token) return;
     try {
-      const [t, m, o, k] = await Promise.all([
+      const promises = [
         apiFetch("/tables", {}, token),
         apiFetch("/menu-items", {}, token),
         apiFetch("/orders", {}, token),
         apiFetch("/kitchen", {}, token),
-      ]);
+      ];
+      
+      if (["ADMIN", "MANAGER"].includes(userRole)) {
+        promises.push(apiFetch("/users", {}, token));
+      }
+
+      const results = await Promise.all(promises);
+      const [t, m, o, k] = results;
+      const s = ["ADMIN", "MANAGER"].includes(userRole) ? results[4] : [];
+
       setTables(t || []);
       setMenuItems(m || []);
       setOrders(o || []);
       setKitchenTickets(k || []);
+      setStaff(s || []);
 
       // Dashboard only for ADMIN/MANAGER
       if (["ADMIN", "MANAGER"].includes(userRole)) {
@@ -235,7 +248,7 @@ function App() {
   if (!auth) return <LoginScreen onLogin={handleLogin} />;
 
   let allowedRoles = [];
-  if (["ADMIN", "MANAGER"].includes(userRole)) allowedRoles = ["waiter", "kds", "cashier", "manager"];
+  if (["ADMIN", "MANAGER"].includes(userRole)) allowedRoles = ["waiter", "kds", "cashier", "manager", "staff"];
   else if (userRole === "WAITER") allowedRoles = ["waiter"];
   else if (userRole === "CHEF") allowedRoles = ["kds"];
   else if (userRole === "CASHIER") allowedRoles = ["cashier"];
@@ -267,6 +280,9 @@ function App() {
           {(["ADMIN", "MANAGER"].includes(userRole)) && (
             <NavButton active={routeRole === "manager"} onClick={() => setRole("manager")} icon={<LayoutDashboard />} label="Manager" />
           )}
+          {(["ADMIN", "MANAGER"].includes(userRole)) && (
+            <NavButton active={routeRole === "staff"} onClick={() => setRole("staff")} icon={<Users />} label="Staff" />
+          )}
         </nav>
         <div className="sync-card">
           <span className="dot online" />
@@ -285,12 +301,13 @@ function App() {
             <p>Loading live data from backend...</p>
           </div>
         ) : (
-          <>
+          <main className="view-container">
             {routeRole === "waiter" && <WaiterView tables={tables} menuItems={menuItems} orders={orders} token={token} onRefresh={fetchAll} />}
             {routeRole === "kds" && <KdsView kitchenTickets={kitchenTickets} token={token} onRefresh={fetchAll} />}
             {routeRole === "cashier" && <CashierView orders={orders} token={token} onRefresh={fetchAll} />}
             {routeRole === "manager" && <ManagerView dashboard={dashboard} orders={orders} tables={tables} onRefresh={fetchAll} />}
-          </>
+            {routeRole === "staff" && <StaffView staff={staff} token={token} onRefresh={fetchAll} />}
+          </main>
         )}
       </main>
     </div>
@@ -510,12 +527,13 @@ function CashierView({ orders, token, onRefresh }) {
     if (!selected) return;
     setProcessing(true); setError("");
     try {
-      await apiFetch("/payments", {
+      const paymentData = await apiFetch("/payments", {
         method: "POST",
         body: JSON.stringify({ orderId: selected.id, method, amount: selected.total }),
       }, token);
       await onRefresh();
       setSelectedOrderId(null);
+      if (paymentData && paymentData.id) fetchInvoice(paymentData.id);
     } catch (err) { setError(err.message); }
     finally { setProcessing(false); }
   };
@@ -679,6 +697,76 @@ function ManagerView({ dashboard, orders, tables, onRefresh }) {
           {orders.filter((o) => !["PAID", "CANCELLED"].includes(o.status)).length === 0 && (
             <Empty icon={<ReceiptText />} text="No active orders." />
           )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Staff View ───────────────────────────────────────────────────────────────
+function StaffView({ staff, token, onRefresh }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("WAITER");
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleAddStaff = async (e) => {
+    e.preventDefault();
+    setProcessing(true); setError("");
+    try {
+      await apiFetch("/users", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password, role }),
+      }, token);
+      setName(""); setEmail(""); setPassword(""); setRole("WAITER");
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <section className="view manager-view">
+      <Header icon={<Users />} title="Staff Management" subtitle="Manage Waiters, Chefs, and Cashiers"
+        right={<button className="tool-button" onClick={onRefresh}><RefreshCw size={18} /> Refresh</button>} />
+
+      <div className="dashboard-grid">
+        <div className="panel" style={{ gridColumn: "span 2" }}>
+          <div className="section-title"><h2>Current Staff</h2><span>{staff?.length || 0} active accounts</span></div>
+          <div className="table-list" style={{ marginTop: "1rem" }}>
+            {staff?.map(user => (
+              <div key={user.id} className="check-row">
+                <div>
+                  <strong>{user.name}</strong>
+                  <span>{user.email}</span>
+                </div>
+                <div><StatusPill status={user.role} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="section-title"><h2><UserPlus size={18}/> Add New Staff</h2></div>
+          <form className="auth-form" onSubmit={handleAddStaff} style={{ marginTop: "1rem" }}>
+            <input type="text" placeholder="Full Name" required value={name} onChange={e => setName(e.target.value)} />
+            <input type="email" placeholder="Email Address" required value={email} onChange={e => setEmail(e.target.value)} />
+            <input type="password" placeholder="Password" required value={password} onChange={e => setPassword(e.target.value)} />
+            <select value={role} onChange={e => setRole(e.target.value)} style={{ padding: "0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+              <option value="WAITER">Waiter</option>
+              <option value="CHEF">Chef</option>
+              <option value="CASHIER">Cashier</option>
+              <option value="MANAGER">Manager</option>
+            </select>
+            {error && <p className="error-msg"><AlertTriangle size={14}/> {error}</p>}
+            <button type="submit" className="primary-action" disabled={processing}>
+              {processing ? "Creating..." : "Create Staff Account"}
+            </button>
+          </form>
         </div>
       </div>
     </section>

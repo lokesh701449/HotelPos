@@ -12,6 +12,7 @@ export class OrderRepository {
         table: true,
         waiter: { select: { id: true, name: true, role: true } },
         orderItems: { include: { menuItem: true } },
+        payments: true,
       },
       orderBy: { createdAt: "desc" },
     });
