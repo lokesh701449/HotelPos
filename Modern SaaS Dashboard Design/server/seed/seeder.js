@@ -200,6 +200,99 @@ const seed = async () => {
       ],
     });
 
+    const recipeChickenTikka = await Recipe.create({
+      name: "Chicken Tikka Masala",
+      category: "Main Course",
+      portions: 50,
+      cost: 2900,
+      frequency: "Daily",
+      propertyId: propertyA._id,
+      ingredients: [
+        { ingredientId: ingredients["Chicken Breast"]._id, qty: 5, unit: "kg" },
+        { ingredientId: ingredients["Fresh Milk"]._id, qty: 2, unit: "L" },
+        { ingredientId: ingredients["Tomatoes"]._id, qty: 2, unit: "kg" },
+        { ingredientId: ingredients["Butter"]._id, qty: 0.5, unit: "kg" },
+      ],
+    });
+
+    const recipePaneerTikka = await Recipe.create({
+      name: "Paneer Tikka",
+      category: "Starters",
+      portions: 30,
+      cost: 1800,
+      frequency: "Daily",
+      propertyId: propertyA._id,
+      ingredients: [
+        { ingredientId: ingredients["Cheddar Cheese"]._id, qty: 3, unit: "kg" },
+        { ingredientId: ingredients["Onions"]._id, qty: 1, unit: "kg" },
+      ],
+    });
+
+    const recipeTacos = await Recipe.create({
+      name: "Smoked Corn Tacos",
+      category: "Grill",
+      portions: 40,
+      cost: 1500,
+      frequency: "Daily",
+      propertyId: propertyA._id,
+      ingredients: [
+        { ingredientId: ingredients["Tomatoes"]._id, qty: 1.5, unit: "kg" },
+        { ingredientId: ingredients["Onions"]._id, qty: 1, unit: "kg" },
+        { ingredientId: ingredients["Olive Oil"]._id, qty: 0.5, unit: "L" },
+      ],
+    });
+
+    const recipeFries = await Recipe.create({
+      name: "Masala Fries",
+      category: "Fry",
+      portions: 50,
+      cost: 800,
+      frequency: "Daily",
+      propertyId: propertyA._id,
+      ingredients: [
+        { ingredientId: ingredients["Black Pepper"]._id, qty: 0.2, unit: "kg" },
+        { ingredientId: ingredients["Olive Oil"]._id, qty: 1, unit: "L" },
+      ],
+    });
+
+    const recipeNaan = await Recipe.create({
+      name: "Butter Naan",
+      category: "Main Course",
+      portions: 50,
+      cost: 400,
+      frequency: "Daily",
+      propertyId: propertyA._id,
+      ingredients: [
+        { ingredientId: ingredients["Butter"]._id, qty: 0.5, unit: "kg" },
+        { ingredientId: ingredients["Fresh Milk"]._id, qty: 1, unit: "L" },
+      ],
+    });
+
+    const recipeCake = await Recipe.create({
+      name: "Chocolate Lava Cake",
+      category: "Desserts",
+      portions: 40,
+      cost: 1200,
+      frequency: "Daily",
+      propertyId: propertyA._id,
+      ingredients: [
+        { ingredientId: ingredients["Butter"]._id, qty: 1, unit: "kg" },
+        { ingredientId: ingredients["Eggs"]._id, qty: 20, unit: "piece" },
+      ],
+    });
+
+    const recipeMojito = await Recipe.create({
+      name: "Virgin Mojito",
+      category: "Beverages",
+      portions: 40,
+      cost: 600,
+      frequency: "Daily",
+      propertyId: propertyA._id,
+      ingredients: [
+        { ingredientId: ingredients["Fresh Milk"]._id, qty: 2, unit: "L" },
+      ],
+    });
+
     console.log("Recipes seeded. Seeding inventory transactions...");
 
     // 7. Seed Transactions to establish ledger history and stock levels
@@ -209,6 +302,7 @@ const seed = async () => {
       { propertyId: propertyA._id, ingredient: "Basmati Rice", type: "RECEIVE", qty: 70, unit: "kg", source: "PO-2026-1001", createdBy: storeKeeper._id, notes: "Initial delivery" },
       { propertyId: propertyA._id, ingredient: "Fresh Milk", type: "RECEIVE", qty: 15, unit: "L", source: "PO-2026-1002", createdBy: storeKeeper._id, notes: "Initial delivery" },
       { propertyId: propertyA._id, ingredient: "Tomatoes", type: "RECEIVE", qty: 5, unit: "kg", source: "Direct Delivery", createdBy: storeKeeper._id, notes: "Local emergency purchase" },
+      { propertyId: propertyA._id, ingredient: "Tomatoes", type: "RECEIVE", qty: 50, unit: "kg", source: "Invoice #112", createdBy: storeKeeper._id, notes: "Initial delivery" },
       { propertyId: propertyA._id, ingredient: "Olive Oil", type: "RECEIVE", qty: 40, unit: "L", source: "Invoice #112", createdBy: storeKeeper._id, notes: "Restocking" },
       { propertyId: propertyA._id, ingredient: "Onions", type: "RECEIVE", qty: 25, unit: "kg", source: "Invoice #113", createdBy: storeKeeper._id, notes: "Restocking" },
       { propertyId: propertyA._id, ingredient: "Cheddar Cheese", type: "RECEIVE", qty: 30, unit: "kg", source: "Invoice #114", createdBy: storeKeeper._id, notes: "Initial delivery" },

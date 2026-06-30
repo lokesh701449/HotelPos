@@ -79,7 +79,8 @@ export function Recipes() {
     if (!selectedRecipe || !portionsToPrepare) return;
 
     try {
-      const result = await recipeAPI.prepare(selectedRecipe.id, parseInt(portionsToPrepare));
+      const recipeId = selectedRecipe._id || selectedRecipe.id;
+      const result = await recipeAPI.prepare(recipeId, parseInt(portionsToPrepare));
       toast.success(result.message || "Recipe preparation logged, stock deducted!");
       setShowPrepareModal(false);
       fetchRecipes();
@@ -223,7 +224,7 @@ export function Recipes() {
       {/* Recipe Grid */}
       <div className="grid gap-4 md:grid-cols-2">
         {filteredRecipes.map((recipe) => (
-          <Card key={recipe.id} className="shadow-sm">
+          <Card key={recipe._id || recipe.id} className="shadow-sm">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -254,7 +255,7 @@ export function Recipes() {
                       key={idx}
                       className="flex justify-between text-sm py-1 border-t border-border"
                     >
-                      <span>{ing.name}</span>
+                      <span>{ing.ingredientId?.name || ing.name || "Ingredient"}</span>
                       <span className="text-muted-foreground">
                         {ing.qty} {ing.unit}
                       </span>

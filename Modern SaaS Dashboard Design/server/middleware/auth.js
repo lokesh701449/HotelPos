@@ -61,13 +61,18 @@ export const requirePropertyAccess = (req, res, next) => {
     return res.status(401).json({ message: "Not authorized" });
   }
 
-  // Admin and Purchase Managers can bypass property isolation
-  if (user.role === "Admin" || user.role === "Purchase Manager") {
-    return next();
-  }
-
   // Property ID can be in params, query, or body
   const propertyId = req.params.propertyId || req.query.propertyId || req.body.propertyId;
+
+  // Admin and Purchase Managers can bypass property isolation
+  if (user.role === "Admin" || user.role === "Purchase Manager") {
+    if (propertyId) {
+      req.propertyId = propertyId;
+    } else if (user.assignedProperties && user.assignedProperties.length > 0) {
+      req.propertyId = user.assignedProperties[0].toString();
+    }
+    return next();
+  }
 
   if (!propertyId) {
     // If no property ID is provided in request, default to user's first assigned property
