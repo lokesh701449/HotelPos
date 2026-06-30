@@ -122,7 +122,7 @@ export const generateConsolidatedOrder = async (req, res) => {
     const requests = await PurchaseRequest.find({
       _id: { $in: requestIds },
       status: "approved",
-    }).populate("items.ingredientId");
+    }).populate("items.ingredientId").populate("ingredientId");
 
     if (requests.length === 0) {
       return res.status(400).json({ message: "No approved requests found in selection" });
