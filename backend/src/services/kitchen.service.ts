@@ -1,7 +1,8 @@
 import { kitchenRepository } from "../repositories/kitchen.repository";
 import { orderRepository } from "../repositories/order.repository";
-import { NotFoundError } from "../utils/errors";
+import { NotFoundError, BadRequestError } from "../utils/errors";
 import { socketService } from "../socket/socket.service";
+import { stockroomService } from "../integrations/stockroom.service";
 
 export class KitchenService {
   async getAllTickets(tenantId: string, status?: string) {
@@ -18,6 +19,35 @@ export class KitchenService {
 
   async updateTicketStatus(id: string, tenantId: string, status: "PENDING" | "PREPARING" | "READY" | "SERVED") {
     const ticket = await this.getTicketById(id, tenantId);
+
+    // If transitioning to READY, verify and deduct ingredients in StockRoom
+    if (status === "READY" && ticket.status !== "READY") {
+      try {
+        const propertyId = await stockroomService.getPropertyId(tenantId);
+        if (propertyId) {
+          const recipes = await stockroomService.getRecipes(propertyId);
+          for (const item of ticket.order.orderItems) {
+            const recipe = recipes.find(
+              (r: any) => r.name.toLowerCase() === item.menuItem.name.toLowerCase()
+            );
+            if (recipe) {
+              await stockroomService.prepareRecipe(recipe._id || recipe.id, item.quantity, propertyId);
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error("[StockRoom Integration Error]:", error);
+        if (error.success === false) {
+          // Insufficient stock validation error from StockRoom
+          throw new BadRequestError(
+            `Insufficient Stock: ${error.ingredient}. Required: ${error.required}, Available: ${error.available}, Missing: ${error.missing}`
+          );
+        } else {
+          // Log other API connection errors but allow the ticket to be prepared so FOH keeps running
+          console.warn("[StockRoom API Connection Error]: Inventory Service Unavailable. Skipping deduction.");
+        }
+      }
+    }
 
     // Update ticket status
     const updatedTicket = await kitchenRepository.update(id, tenantId, {

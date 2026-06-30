@@ -3,6 +3,7 @@ import { tableRepository } from "../repositories/table.repository";
 import { menuRepository } from "../repositories/menu.repository";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/errors";
 import { socketService } from "../socket/socket.service";
+import { stockroomService } from "../integrations/stockroom.service";
 
 const TAX_RATE = 0.05; // 5% tax
 
@@ -74,6 +75,49 @@ export class OrderService {
       });
 
       subtotal += menuItem.price * item.quantity;
+    }
+
+    // Validate live inventory availability in StockRoom before confirming order
+    try {
+      const propertyId = await stockroomService.getPropertyId(tenantId);
+      if (propertyId) {
+        const recipes = await stockroomService.getRecipes(propertyId);
+        const inventory = await stockroomService.getInventory(propertyId);
+
+        for (const item of data.items) {
+          const menuItem = await menuRepository.findById(item.menuItemId, tenantId);
+          if (!menuItem) continue;
+
+          const recipe = recipes.find(
+            (r: any) => r.name.toLowerCase() === menuItem.name.toLowerCase()
+          );
+
+          if (recipe) {
+            for (const ingReq of recipe.ingredients) {
+              const ingId = ingReq.ingredientId?._id || ingReq.ingredientId?.id || ingReq.ingredientId;
+              const inventoryItem = inventory.find(
+                (inv: any) => inv.id?.toString() === ingId?.toString()
+              );
+
+              if (inventoryItem) {
+                const requiredQty = (ingReq.qty / (recipe.portions || 1)) * item.quantity;
+                if (inventoryItem.available < requiredQty) {
+                  throw new BadRequestError(
+                    `Insufficient stock for "${inventoryItem.ingredient}" to prepare "${menuItem.name}". Required: ${requiredQty.toFixed(2)} ${inventoryItem.unit || ""}, Available: ${inventoryItem.available.toFixed(2)} ${inventoryItem.unit || ""}`
+                  );
+                }
+              } else {
+                throw new BadRequestError(`Recipe ingredient "${ingReq.ingredientId?.name || "Unknown"}" for "${menuItem.name}" is missing in StockRoom`);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+      console.warn("[StockRoom API Error] Inventory Service Unavailable during order validation. Allowing order to proceed.");
     }
 
     const tax = Number((subtotal * TAX_RATE).toFixed(2));

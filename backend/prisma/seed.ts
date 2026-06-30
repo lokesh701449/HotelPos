@@ -23,6 +23,7 @@ async function main() {
         { name: "Smoked Corn Tacos", description: "Smoked sweet corn tacos", price: 290, prepTime: 9, veg: true, categoryName: "Grill" },
         { name: "Masala Fries", description: "Crispy fries with peri peri seasoning", price: 210, prepTime: 6, veg: true, categoryName: "Fry" },
         { name: "Chicken Tikka Masala", description: "Roasted marinated chicken chunks in spiced curry sauce", price: 450, prepTime: 18, veg: false, categoryName: "Main Course" },
+        { name: "Chicken Biryani", description: "Traditional aromatic spiced chicken rice", price: 380, prepTime: 15, veg: false, categoryName: "Main Course" },
         { name: "Butter Naan", description: "Soft Indian flatbread brushed with butter", price: 60, prepTime: 5, veg: true, categoryName: "Main Course" },
         { name: "Chocolate Lava Cake", description: "Warm chocolate cake with molten center", price: 250, prepTime: 10, veg: true, categoryName: "Desserts" },
         { name: "Virgin Mojito", description: "Refreshing mint and lime mocktail", price: 180, prepTime: 3, veg: true, categoryName: "Beverages" },

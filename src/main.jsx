@@ -455,7 +455,10 @@ function KdsView({ kitchenTickets, token, onRefresh }) {
     try {
       await apiFetch(`/kitchen/${ticketId}`, { method: "PATCH", body: JSON.stringify({ status }) }, token);
       await onRefresh();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Operation failed");
+    }
   };
 
   return (
